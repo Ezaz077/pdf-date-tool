@@ -8,7 +8,7 @@
     <meta name="viewport"
           content="width=device-width, initial-scale=1.0">
 
-    <title>PDF Date Tool</title>
+    <title>PDF Date Validation Tool</title>
 
     <style>
 
@@ -24,20 +24,23 @@
         }
 
         .container {
-            max-width: 650px;
+            width: 100%;
+            max-width: 680px;
             margin: auto;
             background: white;
-            padding: 30px;
-            border-radius: 14px;
-            box-shadow: 0 8px 30px rgba(0,0,0,.08);
+            padding: 32px;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
         }
 
         h1 {
-            margin-top: 0;
+            margin: 0;
+            font-size: 28px;
         }
 
         .subtitle {
             color: #666;
+            margin-top: 8px;
             margin-bottom: 30px;
         }
 
@@ -48,11 +51,14 @@
             font-weight: bold;
         }
 
-        input {
+        input[type="file"],
+        input[type="date"] {
             width: 100%;
             padding: 12px;
             border: 1px solid #d1d5db;
-            border-radius: 7px;
+            border-radius: 8px;
+            background: white;
+            font-size: 15px;
         }
 
         .auto-date {
@@ -61,9 +67,16 @@
 
         .info {
             margin-top: 20px;
-            padding: 12px;
+            padding: 14px;
             background: #f3f4f6;
-            border-radius: 7px;
+            border-radius: 8px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .selected-file {
+            margin-top: 10px;
+            font-size: 14px;
             color: #555;
         }
 
@@ -72,126 +85,213 @@
             margin-top: 25px;
             padding: 14px;
             border: none;
-            border-radius: 7px;
+            border-radius: 8px;
             background: #111827;
             color: white;
             font-size: 16px;
             cursor: pointer;
         }
 
+        button:hover {
+            background: #000;
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .status {
+            display: none;
+            margin-top: 20px;
+            padding: 14px;
+            border-radius: 8px;
+            background: #ecfdf5;
+            color: #065f46;
+        }
+
+        .warning {
+            margin-top: 25px;
+            padding: 14px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 8px;
+            color: #9a3412;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
     </style>
 
 </head>
+
 
 <body>
 
 <div class="container">
 
-    <h1>PDF Date Tool</h1>
+    <h1>PDF Date Validation Tool</h1>
 
     <div class="subtitle">
-        Internal PDF date-management demo
+        Upload a PDF and generate a date validation report.
     </div>
 
 
-    <label>Upload PDF</label>
-
-    <input
-        type="file"
-        id="pdfFile"
-        accept=".pdf"
+    <form
+        id="pdfForm"
+        action="/process"
+        method="POST"
+        enctype="multipart/form-data"
     >
 
+        <label for="pdfFile">
+            Upload PDF
+        </label>
 
-    <label>Web Registration Date</label>
+        <input
+            type="file"
+            id="pdfFile"
+            name="pdf_file"
+            accept=".pdf"
+            required
+            onchange="showFilename()"
+        >
 
-    <input
-        type="date"
-        id="registrationDate"
-        onchange="syncDate()"
-    >
-
-
-    <label>Expected Date of Journey</label>
-
-    <input
-        type="date"
-        id="journeyDate"
-    >
-
-
-    <label>Declaration Date</label>
-
-    <input
-        type="date"
-        id="declarationDate"
-        class="auto-date"
-        readonly
-    >
+        <div
+            id="filename"
+            class="selected-file"
+        ></div>
 
 
-    <div class="info">
-        Declaration Date automatically follows
-        Web Registration Date.
-    </div>
+        <label for="registrationDate">
+            Web Registration Date
+        </label>
+
+        <input
+            type="date"
+            id="registrationDate"
+            name="registration_date"
+            required
+            onchange="syncDeclarationDate()"
+        >
 
 
-    <button onclick="processPDF()">
-        Process PDF
-    </button>
+        <label for="journeyDate">
+            Expected Date of Journey
+        </label>
+
+        <input
+            type="date"
+            id="journeyDate"
+            name="journey_date"
+            required
+        >
+
+
+        <label for="declarationDate">
+            Declaration Date
+        </label>
+
+        <input
+            type="date"
+            id="declarationDate"
+            class="auto-date"
+            readonly
+        >
+
+
+        <div class="info">
+
+            <strong>Automatic rule:</strong><br>
+
+            Declaration Date always follows
+            Web Registration Date.
+
+        </div>
+
+
+        <div class="warning">
+
+            The uploaded PDF is not modified.
+            Processing generates a separate validation
+            report only.
+
+        </div>
+
+
+        <button
+            type="submit"
+            id="processButton"
+        >
+            Generate Validation Report
+        </button>
+
+
+        <div
+            id="status"
+            class="status"
+        >
+            Processing PDF...
+        </div>
+
+    </form>
 
 </div>
 
 
 <script>
 
-function syncDate() {
+function syncDeclarationDate() {
 
-    const date =
+    const registrationDate =
         document.getElementById("registrationDate").value;
 
-    document.getElementById("declarationDate").value = date;
+    document.getElementById("declarationDate").value =
+        registrationDate;
 }
 
 
-function processPDF() {
+function showFilename() {
 
-    const file =
-        document.getElementById("pdfFile").files[0];
+    const fileInput =
+        document.getElementById("pdfFile");
 
-    const registration =
-        document.getElementById("registrationDate").value;
-
-    const journey =
-        document.getElementById("journeyDate").value;
+    const filename =
+        document.getElementById("filename");
 
 
-    if (!file) {
-        alert("Please upload a PDF.");
-        return;
+    if (fileInput.files.length > 0) {
+
+        filename.textContent =
+            "Selected: " +
+            fileInput.files[0].name;
+
+    } else {
+
+        filename.textContent = "";
+
     }
-
-
-    if (!registration) {
-        alert("Please select Web Registration Date.");
-        return;
-    }
-
-
-    if (!journey) {
-        alert("Please select Expected Date of Journey.");
-        return;
-    }
-
-
-    alert(
-        "PDF selected successfully.\n\n" +
-        "Web Registration Date: " + registration +
-        "\nExpected Date of Journey: " + journey +
-        "\nDeclaration Date: " + registration
-    );
-
 }
+
+
+document
+    .getElementById("pdfForm")
+    .addEventListener("submit", function() {
+
+        document
+            .getElementById("processButton")
+            .disabled = true;
+
+        document
+            .getElementById("processButton")
+            .textContent =
+            "Processing...";
+
+        document
+            .getElementById("status")
+            .style.display = "block";
+
+    });
 
 </script>
 
