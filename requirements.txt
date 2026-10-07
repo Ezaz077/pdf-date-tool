@@ -1,3 +1,3 @@
-Flask
-gunicorn
-pypdf
+Flask==3.1.2
+gunicorn==23.0.0
+PyMuPDF==1.26.5
