@@ -1,108 +1,356 @@
-from flask import Flask, render_template, request, send_file
-from pypdf import PdfReader
-from datetime import datetime
-from io import BytesIO
 import os
+import uuid
+import tempfile
+from pathlib import Path
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    send_file,
+    session,
+)
+import fitz
+
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "pdf-editor-secret-key")
 
-app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024
+MAX_FILE_SIZE = 20 * 1024 * 1024
+
+BASE_DIR = Path(tempfile.gettempdir()) / "pdf_text_editor"
+BASE_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def get_job_dir():
+    job_id = session.get("job_id")
+
+    if not job_id:
+        job_id = str(uuid.uuid4())
+        session["job_id"] = job_id
+
+    job_dir = BASE_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    return job_dir
+
+
+def get_pdf_path():
+    return get_job_dir() / "original.pdf"
+
+
+def get_edited_pdf_path():
+    return get_job_dir() / "edited.pdf"
+
+
+def extract_spans(pdf_path):
+    doc = fitz.open(pdf_path)
+
+    pages = []
+
+    for page_number, page in enumerate(doc):
+        page_width = page.rect.width
+        page_height = page.rect.height
+
+        blocks = page.get_text("dict")["blocks"]
+
+        spans = []
+
+        for block in blocks:
+            if "lines" not in block:
+                continue
+
+            for line in block["lines"]:
+                for span in line["spans"]:
+
+                    text = span.get("text", "")
+
+                    if not text.strip():
+                        continue
+
+                    bbox = span["bbox"]
+
+                    spans.append({
+                        "text": text,
+                        "bbox": [
+                            bbox[0],
+                            bbox[1],
+                            bbox[2],
+                            bbox[3]
+                        ],
+                        "font_size": span.get("size", 10),
+                        "font": span.get("font", ""),
+                        "page_width": page_width,
+                        "page_height": page_height
+                    })
+
+        pages.append({
+            "page": page_number,
+            "width": page_width,
+            "height": page_height,
+            "spans": spans
+        })
+
+    doc.close()
+
+    return pages
 
 
 @app.route("/")
-def home():
+def index():
     return render_template("index.html")
 
 
-@app.route("/process", methods=["POST"])
-def process():
+@app.route("/upload", methods=["POST"])
+def upload():
 
-    uploaded_file = request.files.get("pdf_file")
+    if "file" not in request.files:
+        return jsonify({
+            "success": False,
+            "error": "No file uploaded."
+        }), 400
 
-    registration_date = request.form.get("registration_date")
-    journey_date = request.form.get("journey_date")
+    file = request.files["file"]
 
-    if not uploaded_file:
-        return "No PDF uploaded.", 400
+    if not file.filename:
+        return jsonify({
+            "success": False,
+            "error": "Please select a PDF."
+        }), 400
 
-    if not registration_date:
-        return "Web Registration Date is required.", 400
+    if not file.filename.lower().endswith(".pdf"):
+        return jsonify({
+            "success": False,
+            "error": "Only PDF files are supported."
+        }), 400
 
-    if not journey_date:
-        return "Expected Date of Journey is required.", 400
+    data = file.read()
 
-    if not uploaded_file.filename.lower().endswith(".pdf"):
-        return "Please upload a PDF file.", 400
+    if len(data) > MAX_FILE_SIZE:
+        return jsonify({
+            "success": False,
+            "error": "Maximum file size is 20 MB."
+        }), 400
+
+    pdf_path = get_pdf_path()
+
+    with open(pdf_path, "wb") as f:
+        f.write(data)
 
     try:
-        reader = PdfReader(uploaded_file)
+        doc = fitz.open(pdf_path)
 
-        page_count = len(reader.pages)
+        if doc.is_encrypted:
+            doc.close()
 
-    except Exception:
-        return "The uploaded file is not a valid readable PDF.", 400
+            return jsonify({
+                "success": False,
+                "error": "Password-protected PDFs are not supported."
+            }), 400
 
-    try:
-        reg_date = datetime.strptime(
-            registration_date,
-            "%Y-%m-%d"
-        ).strftime("%d-%b-%Y").upper()
+        page_count = len(doc)
+        doc.close()
 
-        journey = datetime.strptime(
-            journey_date,
-            "%Y-%m-%d"
-        ).strftime("%d-%b-%Y").upper()
+    except Exception as e:
 
-    except ValueError:
-        return "Invalid date format.", 400
+        return jsonify({
+            "success": False,
+            "error": f"Invalid PDF: {str(e)}"
+        }), 400
 
-    declaration_date = reg_date
+    edited_path = get_edited_pdf_path()
 
-    report = f"""PDF DATE VALIDATION REPORT
-================================
+    if edited_path.exists():
+        edited_path.unlink()
 
-Original PDF filename:
-{uploaded_file.filename}
+    pages = extract_spans(pdf_path)
 
-PDF page count:
-{page_count}
+    return jsonify({
+        "success": True,
+        "pages": pages,
+        "page_count": page_count
+    })
 
-Selected Web Registration Date:
-{reg_date}
 
-Selected Expected Date of Journey:
-{journey}
+@app.route("/page/<int:page_number>")
+def page_image(page_number):
 
-Declaration Date:
-{declaration_date}
+    pdf_path = get_pdf_path()
 
-RULE:
-Declaration Date = Web Registration Date
+    if not pdf_path.exists():
+        return "PDF not found.", 404
 
-STATUS:
-VALID
+    doc = fitz.open(pdf_path)
 
-NOTE:
-This report does not modify the uploaded PDF.
-The original PDF remains unchanged.
-"""
+    if page_number < 0 or page_number >= len(doc):
+        doc.close()
+        return "Page not found.", 404
 
-    report_file = BytesIO(report.encode("utf-8"))
-    report_file.seek(0)
+    page = doc[page_number]
 
-    safe_name = os.path.splitext(
-        uploaded_file.filename
-    )[0]
+    matrix = fitz.Matrix(1.5, 1.5)
 
-    report_name = f"{safe_name}_date_report.txt"
+    pix = page.get_pixmap(
+        matrix=matrix,
+        alpha=False
+    )
+
+    image_path = get_job_dir() / f"page_{page_number}.png"
+
+    pix.save(str(image_path))
+
+    doc.close()
 
     return send_file(
-        report_file,
-        mimetype="text/plain",
+        image_path,
+        mimetype="image/png"
+    )
+
+
+@app.route("/edit", methods=["POST"])
+def edit_pdf():
+
+    pdf_path = get_pdf_path()
+
+    if not pdf_path.exists():
+        return jsonify({
+            "success": False,
+            "error": "No PDF uploaded."
+        }), 400
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "success": False,
+            "error": "Invalid request."
+        }), 400
+
+    try:
+        page_number = int(data["page"])
+        bbox = data["bbox"]
+        new_text = str(data["new_text"])
+
+        font_size = float(
+            data.get("font_size", 10)
+        )
+
+    except Exception:
+        return jsonify({
+            "success": False,
+            "error": "Invalid edit data."
+        }), 400
+
+    doc = fitz.open(pdf_path)
+
+    if page_number < 0 or page_number >= len(doc):
+        doc.close()
+
+        return jsonify({
+            "success": False,
+            "error": "Invalid page."
+        }), 400
+
+    page = doc[page_number]
+
+    rect = fitz.Rect(
+        float(bbox[0]),
+        float(bbox[1]),
+        float(bbox[2]),
+        float(bbox[3])
+    )
+
+    # Slight padding
+    cover_rect = fitz.Rect(
+        rect.x0 - 1,
+        rect.y0 - 1,
+        rect.x1 + 1,
+        rect.y1 + 1
+    )
+
+    # Cover existing text area
+    page.draw_rect(
+        cover_rect,
+        color=(1, 1, 1),
+        fill=(1, 1, 1),
+        overlay=True
+    )
+
+    # Insert replacement text
+    page.insert_textbox(
+        rect,
+        new_text,
+        fontsize=font_size,
+        fontname="helv",
+        color=(0, 0, 0),
+        align=fitz.TEXT_ALIGN_LEFT,
+        overlay=True
+    )
+
+    edited_path = get_edited_pdf_path()
+
+    doc.save(
+        str(edited_path),
+        garbage=4,
+        deflate=True
+    )
+
+    doc.close()
+
+    return jsonify({
+        "success": True
+    })
+
+
+@app.route("/reset", methods=["POST"])
+def reset_pdf():
+
+    edited_path = get_edited_pdf_path()
+
+    if edited_path.exists():
+        edited_path.unlink()
+
+    pdf_path = get_pdf_path()
+
+    if not pdf_path.exists():
+        return jsonify({
+            "success": False,
+            "error": "No PDF uploaded."
+        }), 400
+
+    pages = extract_spans(pdf_path)
+
+    return jsonify({
+        "success": True,
+        "pages": pages
+    })
+
+
+@app.route("/download")
+def download_pdf():
+
+    edited_path = get_edited_pdf_path()
+    original_path = get_pdf_path()
+
+    if edited_path.exists():
+        file_path = edited_path
+    elif original_path.exists():
+        file_path = original_path
+    else:
+        return "No PDF available.", 404
+
+    return send_file(
+        file_path,
         as_attachment=True,
-        download_name=report_name
+        download_name="edited.pdf",
+        mimetype="application/pdf"
     )
 
 
 if __name__ == "__main__":
-    app.run()
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 5000)),
+        debug=False
+    )
