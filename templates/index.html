@@ -5,10 +5,12 @@
 
     <meta charset="UTF-8">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
 
-    <title>PDF Date Validation Tool</title>
+    <title>PDF Text Editor</title>
 
     <style>
 
@@ -18,107 +20,183 @@
 
         body {
             margin: 0;
-            padding: 40px 20px;
-            background: #f3f4f6;
             font-family: Arial, sans-serif;
+            background: #f3f4f6;
+            color: #111827;
         }
 
-        .container {
-            width: 100%;
-            max-width: 680px;
-            margin: auto;
-            background: white;
-            padding: 32px;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        header {
+            background: #111827;
+            color: white;
+            padding: 15px 20px;
         }
 
-        h1 {
+        header h1 {
             margin: 0;
-            font-size: 28px;
+            font-size: 20px;
         }
 
-        .subtitle {
-            color: #666;
-            margin-top: 8px;
-            margin-bottom: 30px;
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 15px;
+            background: white;
+            border-bottom: 1px solid #ddd;
+            flex-wrap: wrap;
+        }
+
+        button,
+        .upload-label {
+            border: 0;
+            padding: 9px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: #2563eb;
+            color: white;
+            font-size: 14px;
+        }
+
+        button:hover,
+        .upload-label:hover {
+            opacity: .9;
+        }
+
+        .danger {
+            background: #dc2626;
+        }
+
+        .secondary {
+            background: #6b7280;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .main {
+            display: flex;
+            height: calc(100vh - 108px);
+            overflow: hidden;
+        }
+
+        .viewer {
+            flex: 1;
+            overflow: auto;
+            padding: 25px;
+            background: #e5e7eb;
+        }
+
+        .sidebar {
+            width: 330px;
+            background: white;
+            border-left: 1px solid #ddd;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .page {
+            position: relative;
+            margin: 0 auto 25px;
+            background: white;
+            box-shadow: 0 3px 12px rgba(0,0,0,.15);
+        }
+
+        .page img {
+            display: block;
+            width: 100%;
+            height: auto;
+        }
+
+        .text-layer {
+            position: absolute;
+            inset: 0;
+        }
+
+        .text-span {
+            position: absolute;
+            cursor: pointer;
+            background: rgba(37, 99, 235, .04);
+            border: 1px solid transparent;
+            overflow: hidden;
+            white-space: pre;
+        }
+
+        .text-span:hover {
+            border-color: #2563eb;
+            background: rgba(37, 99, 235, .10);
+        }
+
+        .text-span.selected {
+            border-color: #dc2626;
+            background: rgba(220, 38, 38, .12);
+        }
+
+        .sidebar h2 {
+            margin-top: 0;
+            font-size: 18px;
         }
 
         label {
             display: block;
-            margin-top: 20px;
-            margin-bottom: 8px;
+            margin-top: 15px;
+            margin-bottom: 6px;
+            font-size: 13px;
             font-weight: bold;
         }
 
-        input[type="file"],
-        input[type="date"] {
+        textarea,
+        input[type="number"] {
             width: 100%;
-            padding: 12px;
+            padding: 9px;
             border: 1px solid #d1d5db;
-            border-radius: 8px;
-            background: white;
-            font-size: 15px;
+            border-radius: 6px;
+            font-family: Arial, sans-serif;
         }
 
-        .auto-date {
-            background: #f3f4f6;
+        textarea {
+            min-height: 100px;
+            resize: vertical;
         }
 
         .info {
-            margin-top: 20px;
-            padding: 14px;
             background: #f3f4f6;
-            border-radius: 8px;
-            color: #555;
+            border-radius: 7px;
+            padding: 12px;
+            font-size: 13px;
             line-height: 1.5;
+            margin-top: 15px;
         }
 
-        .selected-file {
-            margin-top: 10px;
-            font-size: 14px;
-            color: #555;
-        }
-
-        button {
-            width: 100%;
-            margin-top: 25px;
-            padding: 14px;
-            border: none;
-            border-radius: 8px;
-            background: #111827;
-            color: white;
-            font-size: 16px;
-            cursor: pointer;
-        }
-
-        button:hover {
-            background: #000;
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
+        .empty {
+            text-align: center;
+            padding: 80px 20px;
+            color: #6b7280;
         }
 
         .status {
-            display: none;
-            margin-top: 20px;
-            padding: 14px;
-            border-radius: 8px;
-            background: #ecfdf5;
-            color: #065f46;
+            font-size: 13px;
+            margin-left: auto;
+            color: #4b5563;
         }
 
-        .warning {
-            margin-top: 25px;
-            padding: 14px;
-            background: #fff7ed;
-            border: 1px solid #fed7aa;
-            border-radius: 8px;
-            color: #9a3412;
-            font-size: 14px;
-            line-height: 1.5;
+        @media(max-width: 800px) {
+
+            .main {
+                flex-direction: column;
+                height: auto;
+            }
+
+            .sidebar {
+                width: 100%;
+                border-left: 0;
+                border-top: 1px solid #ddd;
+            }
+
+            .viewer {
+                min-height: 60vh;
+            }
+
         }
 
     </style>
@@ -128,170 +206,669 @@
 
 <body>
 
-<div class="container">
+<header>
 
-    <h1>PDF Date Validation Tool</h1>
+    <h1>PDF Text Editor</h1>
 
-    <div class="subtitle">
-        Upload a PDF and generate a date validation report.
+</header>
+
+
+<div class="toolbar">
+
+    <label
+        for="fileInput"
+        class="upload-label"
+    >
+        Upload PDF
+    </label>
+
+    <input
+        id="fileInput"
+        type="file"
+        accept=".pdf,application/pdf"
+    >
+
+    <button
+        id="resetBtn"
+        class="secondary"
+    >
+        Reset
+    </button>
+
+    <button
+        id="downloadBtn"
+    >
+        Download PDF
+    </button>
+
+    <span
+        id="status"
+        class="status"
+    >
+        No PDF loaded
+    </span>
+
+</div>
+
+
+<div class="main">
+
+    <div
+        id="viewer"
+        class="viewer"
+    >
+
+        <div class="empty">
+
+            <h2>Upload a PDF</h2>
+
+            <p>
+                Select text directly from the PDF preview
+                and edit it.
+            </p>
+
+        </div>
+
     </div>
 
 
-    <form
-        id="pdfForm"
-        action="/process"
-        method="POST"
-        enctype="multipart/form-data"
-    >
+    <aside class="sidebar">
 
-        <label for="pdfFile">
-            Upload PDF
-        </label>
+        <h2>Edit Text</h2>
 
-        <input
-            type="file"
-            id="pdfFile"
-            name="pdf_file"
-            accept=".pdf"
-            required
-            onchange="showFilename()"
-        >
+        <div id="noSelection">
 
-        <div
-            id="filename"
-            class="selected-file"
-        ></div>
-
-
-        <label for="registrationDate">
-            Web Registration Date
-        </label>
-
-        <input
-            type="date"
-            id="registrationDate"
-            name="registration_date"
-            required
-            onchange="syncDeclarationDate()"
-        >
-
-
-        <label for="journeyDate">
-            Expected Date of Journey
-        </label>
-
-        <input
-            type="date"
-            id="journeyDate"
-            name="journey_date"
-            required
-        >
-
-
-        <label for="declarationDate">
-            Declaration Date
-        </label>
-
-        <input
-            type="date"
-            id="declarationDate"
-            class="auto-date"
-            readonly
-        >
-
-
-        <div class="info">
-
-            <strong>Automatic rule:</strong><br>
-
-            Declaration Date always follows
-            Web Registration Date.
+            <p>
+                Click a text area in the PDF to select it.
+            </p>
 
         </div>
 
 
-        <div class="warning">
+        <div id="editor"
+             style="display:none;">
 
-            The uploaded PDF is not modified.
-            Processing generates a separate validation
-            report only.
+            <label>
+                Original Text
+            </label>
+
+            <textarea
+                id="originalText"
+                readonly
+            ></textarea>
+
+
+            <label>
+                New Text
+            </label>
+
+            <textarea
+                id="newText"
+                placeholder="Enter replacement text"
+            ></textarea>
+
+
+            <label>
+                Font Size
+            </label>
+
+            <input
+                id="fontSize"
+                type="number"
+                min="1"
+                step="0.5"
+            >
+
+
+            <br><br>
+
+            <button id="applyBtn">
+                Apply Change
+            </button>
+
+            <button
+                id="cancelBtn"
+                class="secondary"
+            >
+                Cancel
+            </button>
+
+
+            <div class="info">
+
+                <b>How it works</b>
+
+                <br><br>
+
+                1. Click a text area.
+
+                <br>
+
+                2. Enter the new text.
+
+                <br>
+
+                3. Adjust font size if necessary.
+
+                <br>
+
+                4. Click Apply Change.
+
+                <br>
+
+                5. Download the edited PDF.
+
+            </div>
 
         </div>
 
-
-        <button
-            type="submit"
-            id="processButton"
-        >
-            Generate Validation Report
-        </button>
-
-
-        <div
-            id="status"
-            class="status"
-        >
-            Processing PDF...
-        </div>
-
-    </form>
+    </aside>
 
 </div>
 
 
 <script>
 
-function syncDeclarationDate() {
+const fileInput =
+    document.getElementById("fileInput");
 
-    const registrationDate =
-        document.getElementById("registrationDate").value;
+const viewer =
+    document.getElementById("viewer");
 
-    document.getElementById("declarationDate").value =
-        registrationDate;
-}
+const statusEl =
+    document.getElementById("status");
+
+const resetBtn =
+    document.getElementById("resetBtn");
+
+const downloadBtn =
+    document.getElementById("downloadBtn");
+
+const noSelection =
+    document.getElementById("noSelection");
+
+const editor =
+    document.getElementById("editor");
+
+const originalText =
+    document.getElementById("originalText");
+
+const newText =
+    document.getElementById("newText");
+
+const fontSize =
+    document.getElementById("fontSize");
+
+const applyBtn =
+    document.getElementById("applyBtn");
+
+const cancelBtn =
+    document.getElementById("cancelBtn");
 
 
-function showFilename() {
+let pages = [];
 
-    const fileInput =
-        document.getElementById("pdfFile");
-
-    const filename =
-        document.getElementById("filename");
+let selected = null;
 
 
-    if (fileInput.files.length > 0) {
+fileInput.addEventListener(
+    "change",
+    async function() {
 
-        filename.textContent =
-            "Selected: " +
-            fileInput.files[0].name;
+        const file = this.files[0];
 
-    } else {
+        if (!file) {
+            return;
+        }
 
-        filename.textContent = "";
+        if (file.type !== "application/pdf") {
+
+            alert("Please select a PDF file.");
+
+            return;
+        }
+
+        const formData = new FormData();
+
+        formData.append("file", file);
+
+        statusEl.textContent =
+            "Uploading...";
+
+        try {
+
+            const response =
+                await fetch(
+                    "/upload",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+
+            const data =
+                await response.json();
+
+            if (!data.success) {
+
+                alert(data.error);
+
+                statusEl.textContent =
+                    "Upload failed";
+
+                return;
+            }
+
+            pages = data.pages;
+
+            renderPages();
+
+            statusEl.textContent =
+                `${data.page_count} page(s) loaded`;
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Something went wrong while uploading."
+            );
+
+            statusEl.textContent =
+                "Upload failed";
+        }
 
     }
+);
+
+
+function renderPages() {
+
+    viewer.innerHTML = "";
+
+    pages.forEach(
+        (pageData, pageIndex) => {
+
+            const page =
+                document.createElement("div");
+
+            page.className = "page";
+
+            const img =
+                document.createElement("img");
+
+            img.src =
+                `/page/${pageIndex}?t=${Date.now()}`;
+
+            page.appendChild(img);
+
+
+            const layer =
+                document.createElement("div");
+
+            layer.className = "text-layer";
+
+
+            const width =
+                pageData.width;
+
+            const height =
+                pageData.height;
+
+
+            pageData.spans.forEach(
+                (span, spanIndex) => {
+
+                    const el =
+                        document.createElement("div");
+
+                    el.className =
+                        "text-span";
+
+                    const x =
+                        span.bbox[0];
+
+                    const y =
+                        span.bbox[1];
+
+                    const w =
+                        span.bbox[2] -
+                        span.bbox[0];
+
+                    const h =
+                        span.bbox[3] -
+                        span.bbox[1];
+
+
+                    el.style.left =
+                        `${x / width * 100}%`;
+
+                    el.style.top =
+                        `${y / height * 100}%`;
+
+                    el.style.width =
+                        `${w / width * 100}%`;
+
+                    el.style.height =
+                        `${h / height * 100}%`;
+
+
+                    el.textContent =
+                        span.text;
+
+
+                    el.addEventListener(
+                        "click",
+                        function(event) {
+
+                            event.stopPropagation();
+
+                            selectText(
+                                pageIndex,
+                                spanIndex,
+                                el
+                            );
+
+                        }
+                    );
+
+
+                    layer.appendChild(el);
+
+                }
+            );
+
+
+            page.appendChild(layer);
+
+            viewer.appendChild(page);
+
+        }
+    );
+
 }
 
 
-document
-    .getElementById("pdfForm")
-    .addEventListener("submit", function() {
+function selectText(
+    pageIndex,
+    spanIndex,
+    element
+) {
 
-        document
-            .getElementById("processButton")
-            .disabled = true;
+    document
+        .querySelectorAll(".text-span.selected")
+        .forEach(
+            el => el.classList.remove("selected")
+        );
 
-        document
-            .getElementById("processButton")
-            .textContent =
-            "Processing...";
 
-        document
-            .getElementById("status")
-            .style.display = "block";
+    element.classList.add("selected");
 
-    });
+
+    selected = {
+        page: pageIndex,
+        span: spanIndex,
+        element: element
+    };
+
+
+    const span =
+        pages[pageIndex].spans[spanIndex];
+
+
+    originalText.value =
+        span.text;
+
+    newText.value =
+        span.text;
+
+    fontSize.value =
+        span.font_size;
+
+
+    noSelection.style.display =
+        "none";
+
+    editor.style.display =
+        "block";
+
+}
+
+
+applyBtn.addEventListener(
+    "click",
+    async function() {
+
+        if (!selected) {
+            return;
+        }
+
+        const span =
+            pages[selected.page]
+                .spans[selected.span];
+
+
+        const replacement =
+            newText.value;
+
+
+        if (!replacement.trim()) {
+
+            alert(
+                "New text cannot be empty."
+            );
+
+            return;
+        }
+
+
+        applyBtn.disabled = true;
+
+        applyBtn.textContent =
+            "Applying...";
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/edit",
+                    {
+                        method: "POST",
+
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+
+                        body: JSON.stringify({
+
+                            page:
+                                selected.page,
+
+                            bbox:
+                                span.bbox,
+
+                            new_text:
+                                replacement,
+
+                            font_size:
+                                Number(
+                                    fontSize.value
+                                )
+
+                        })
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!data.success) {
+
+                alert(data.error);
+
+                return;
+            }
+
+
+            // Update the local text
+            span.text =
+                replacement;
+
+            span.font_size =
+                Number(
+                    fontSize.value
+                );
+
+
+            selected.element.textContent =
+                replacement;
+
+
+            statusEl.textContent =
+                "Change applied";
+
+
+            // Refresh page image
+            const img =
+                viewer
+                    .children[selected.page]
+                    .querySelector("img");
+
+
+            if (img) {
+
+                img.src =
+                    `/page/${selected.page}?t=${Date.now()}`;
+
+            }
+
+
+            clearSelection();
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Unable to apply change."
+            );
+
+        } finally {
+
+            applyBtn.disabled =
+                false;
+
+            applyBtn.textContent =
+                "Apply Change";
+
+        }
+
+    }
+);
+
+
+cancelBtn.addEventListener(
+    "click",
+    function() {
+
+        clearSelection();
+
+    }
+);
+
+
+function clearSelection() {
+
+    document
+        .querySelectorAll(".text-span.selected")
+        .forEach(
+            el => el.classList.remove("selected")
+        );
+
+
+    selected = null;
+
+    noSelection.style.display =
+        "block";
+
+    editor.style.display =
+        "none";
+
+}
+
+
+resetBtn.addEventListener(
+    "click",
+    async function() {
+
+        if (!confirm(
+            "Reset all changes?"
+        )) {
+            return;
+        }
+
+
+        try {
+
+            const response =
+                await fetch(
+                    "/reset",
+                    {
+                        method: "POST"
+                    }
+                );
+
+
+            const data =
+                await response.json();
+
+
+            if (!data.success) {
+
+                alert(data.error);
+
+                return;
+            }
+
+
+            pages =
+                data.pages;
+
+            renderPages();
+
+            clearSelection();
+
+
+            statusEl.textContent =
+                "Reset complete";
+
+        } catch (error) {
+
+            console.error(error);
+
+            alert(
+                "Reset failed."
+            );
+
+        }
+
+    }
+);
+
+
+downloadBtn.addEventListener(
+    "click",
+    function() {
+
+        window.location.href =
+            "/download";
+
+    }
+);
 
 </script>
 
